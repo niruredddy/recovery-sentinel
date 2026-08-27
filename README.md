@@ -12,7 +12,7 @@ An agentic failure-triage engine designed to diagnose dropped transactions and t
 
 1. Clone the repository and enter the directory:
    ```bash
-   git clone https://github.com/your-username/recovery-sentinel.git
+   git clone https://github.com/niruredddy/recovery-sentinel.git
    cd recovery-sentinel
    ```
 
