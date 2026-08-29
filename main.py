@@ -26,6 +26,7 @@ def health_check():
     return {"status": "healthy", "service": "RecoverySentinel"}
 
 @app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse)
 def dashboard():
     logs = get_recent_audit_logs(limit=25)
     rows_html = ""
@@ -35,6 +36,10 @@ def dashboard():
         payload_data = json.loads(log["decision_payload"])
         rationale = payload_data.get("rationale", "")
         
+        # Extract link if present in payload
+        link = payload_data.get("payload", {}).get("deep_link") or payload_data.get("payload", {}).get("recovery_link")
+        link_html = f'<br><a href="{link}" target="_blank" style="color: #60a5fa; font-size: 11px; text-decoration: underline;">{link}</a>' if link else ""
+        
         rows_html += f"""
         <tr style="border-bottom: 1px solid #1f2937;">
             <td style="padding: 12px; font-family: monospace;">{log['transaction_id']}</td>
@@ -43,7 +48,7 @@ def dashboard():
             <td style="padding: 12px; font-weight: 600; color: #38bdf8;">{log['action_type']}</td>
             <td style="padding: 12px;">{log['confidence']:.2f}</td>
             <td style="padding: 12px;"><span style="background: {badge_color}22; color: {badge_color}; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px;">{badge_text}</span></td>
-            <td style="padding: 12px; color: #9ca3af; font-size: 13px;">{rationale}</td>
+            <td style="padding: 12px; color: #9ca3af; font-size: 13px;">{rationale}{link_html}</td>
         </tr>
         """
 
