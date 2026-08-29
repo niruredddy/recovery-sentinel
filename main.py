@@ -1,5 +1,7 @@
 import uuid
+import json
 from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
 from models import PaymentFailureEvent, ActionPlan, AuditLogEntry
 from agent import RecoveryAgent
@@ -22,6 +24,79 @@ agent = RecoveryAgent()
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "RecoverySentinel"}
+
+@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse)
+def dashboard():
+    logs = get_recent_audit_logs(limit=25)
+    rows_html = ""
+    for log in logs:
+        badge_color = "#10b981" if log["guardrail_passed"] == 1 else "#ef4444"
+        badge_text = "PASSED" if log["guardrail_passed"] == 1 else "GATED"
+        payload_data = json.loads(log["decision_payload"])
+        rationale = payload_data.get("rationale", "")
+        
+        # Extract link if present in payload
+        link = payload_data.get("payload", {}).get("deep_link") or payload_data.get("payload", {}).get("recovery_link")
+        link_html = f'<br><a href="{link}" target="_blank" style="color: #60a5fa; font-size: 11px; text-decoration: underline;">{link}</a>' if link else ""
+        
+        rows_html += f"""
+        <tr style="border-bottom: 1px solid #1f2937;">
+            <td style="padding: 12px; font-family: monospace;">{log['transaction_id']}</td>
+            <td style="padding: 12px;">{log['error_code']}</td>
+            <td style="padding: 12px; text-transform: uppercase;">{log['payment_method']}</td>
+            <td style="padding: 12px; font-weight: 600; color: #38bdf8;">{log['action_type']}</td>
+            <td style="padding: 12px;">{log['confidence']:.2f}</td>
+            <td style="padding: 12px;"><span style="background: {badge_color}22; color: {badge_color}; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px;">{badge_text}</span></td>
+            <td style="padding: 12px; color: #9ca3af; font-size: 13px;">{rationale}{link_html}</td>
+        </tr>
+        """
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>RecoverySentinel Dashboard</title>
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; color: #f3f4f6; margin: 0; padding: 40px; }}
+            .container {{ max-width: 1200px; margin: 0 auto; }}
+            .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }}
+            h1 {{ margin: 0; font-size: 24px; color: #ffffff; }}
+            table {{ width: 100%; border-collapse: collapse; background: #111827; border-radius: 8px; overflow: hidden; }}
+            th {{ background: #1f2937; padding: 14px 12px; text-align: left; font-size: 13px; text-transform: uppercase; color: #9ca3af; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h1>RecoverySentinel Live Audit Ledger</h1>
+                    <p style="color: #9ca3af; margin-top: 4px;">Real-time agentic triage, deterministic guardrail verdicts, and recovery routing</p>
+                </div>
+                <div>
+                    <a href="/docs" style="background: #2563eb; color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 14px;">Interactive API Docs</a>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Transaction ID</th>
+                        <th>Error Code</th>
+                        <th>Method</th>
+                        <th>Assigned Action</th>
+                        <th>Confidence</th>
+                        <th>Guardrail</th>
+                        <th>Decision Rationale</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows_html if rows_html else '<tr><td colspan="7" style="padding: 24px; text-align: center; color: #6b7280;">No transactions processed yet. Trigger a webhook to view logs.</td></tr>'}
+                </tbody>
+            </table>
+        </div>
+    </body>
+    </html>
+    """
 
 @app.post("/webhook/payment-failure", status_code=status.HTTP_200_OK)
 def handle_payment_failure(event: PaymentFailureEvent):
@@ -54,15 +129,3 @@ def handle_payment_failure(event: PaymentFailureEvent):
 def fetch_audit_logs(limit: int = 50):
     logs = get_recent_audit_logs(limit=limit)
     return {"count": len(logs), "logs": logs}
-
-@app.get("/")
-def root():
-    return {
-        "service": "RecoverySentinel Engine",
-        "status": "healthy",
-        "docs_url": "/docs",
-        "endpoints": {
-            "webhook": "/webhook/payment-failure",
-            "audit_logs": "/audit/logs"
-        }
-    }

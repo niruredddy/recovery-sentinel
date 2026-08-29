@@ -1,11 +1,13 @@
 from models import PaymentFailureEvent, ActionPlan
 from guardrails import GuardrailEngine
+from razorpay_client import create_recovery_payment_link
 
 class RecoveryAgent:
     def __init__(self):
         self.guardrail = GuardrailEngine()
 
     def diagnose_and_plan(self, event: PaymentFailureEvent) -> ActionPlan:
+        recovery_link = create_recovery_payment_link(event.amount, event.transaction_id, event.customer_phone)
         error_code = event.error_code.upper()
         
         if "DOWNTIME" in error_code or "NPCI" in error_code:
