@@ -71,8 +71,9 @@ RAZORPAY_KEY_SECRET=your_key_secret
 ##3. Start the Server
 ```Bash
 uvicorn main:app --reload --port 8000
-Open http://127.0.0.1:8000 in your browser to view the Live Audit Dashboard.
 ```
+Open http://127.0.0.1:8000 in your browser to view the Live Audit Dashboard.
+
 ## 4. Ingest Test Data
 In a second terminal:
 ```Bash
